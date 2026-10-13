@@ -94,13 +94,13 @@ main.clean .info,main.clean .hint{display:none}
     <div>
       <p class="lbl"><span class="sw" style="background:#d8b27a"></span>Ripas (topo e base iguais)</p>
       <div class="grid3">
-        <div class="field"><label for="C">Comprimento</label><input id="C" type="number" min="100" step="1"></div>
-        <div class="field"><label for="Lr">Largura</label><input id="Lr" type="number" min="10" step="1"></div>
-        <div class="field"><label for="E">Espessura</label><input id="E" type="number" min="5" step="1"></div>
+        <div class="field"><label for="C">Comprimento</label><input id="C" type="text" inputmode="decimal" autocomplete="off"></div>
+        <div class="field"><label for="Lr">Largura</label><input id="Lr" type="text" inputmode="decimal" autocomplete="off"></div>
+        <div class="field"><label for="E">Espessura</label><input id="E" type="text" inputmode="decimal" autocomplete="off"></div>
       </div>
       <div class="grid2" style="margin-top:10px">
-        <div class="field"><label for="n">Nº de ripas no topo</label><input id="n" type="number" min="2" max="20" step="1"></div>
-        <div class="field"><label for="folga">Folga entre ripas</label><input id="folga" type="number" min="0" step="0.5"></div>
+        <div class="field"><label for="n">Nº de ripas no topo</label><input id="n" type="text" inputmode="numeric" autocomplete="off"></div>
+        <div class="field"><label for="folga">Folga entre ripas</label><input id="folga" type="text" inputmode="decimal" autocomplete="off"></div>
       </div>
       <p class="note">A base leva sempre 3 ripas, uma por cada fila de tacos.</p>
     </div>
@@ -108,9 +108,9 @@ main.clean .info,main.clean .hint{display:none}
     <div>
       <p class="lbl"><span class="sw" style="background:#c39257"></span>Travessas (3)</p>
       <div class="grid3">
-        <div class="field"><label for="tC">Comprimento</label><input id="tC" type="number" readonly tabindex="-1"></div>
-        <div class="field"><label for="tL">Largura</label><input id="tL" type="number" min="10" step="1"></div>
-        <div class="field"><label for="tE">Espessura</label><input id="tE" type="number" min="5" step="1"></div>
+        <div class="field"><label for="tC">Comprimento</label><input id="tC" type="text" readonly tabindex="-1"></div>
+        <div class="field"><label for="tL">Largura</label><input id="tL" type="text" inputmode="decimal" autocomplete="off"></div>
+        <div class="field"><label for="tE">Espessura</label><input id="tE" type="text" inputmode="decimal" autocomplete="off"></div>
       </div>
       <p class="note">O comprimento é calculado pelo nº de ripas do topo, a largura das ripas e a folga.</p>
     </div>
@@ -118,9 +118,9 @@ main.clean .info,main.clean .hint{display:none}
     <div>
       <p class="lbl"><span class="sw" style="background:#9c6a3a"></span>Tacos (9 iguais)</p>
       <div class="grid3">
-        <div class="field"><label for="kC">Comprimento</label><input id="kC" type="number" min="10" step="1"></div>
-        <div class="field"><label for="kL">Largura</label><input id="kL" type="number" min="10" step="1"></div>
-        <div class="field"><label for="kA">Altura</label><input id="kA" type="number" min="10" step="1"></div>
+        <div class="field"><label for="kC">Comprimento</label><input id="kC" type="text" inputmode="decimal" autocomplete="off"></div>
+        <div class="field"><label for="kL">Largura</label><input id="kL" type="text" inputmode="decimal" autocomplete="off"></div>
+        <div class="field"><label for="kA">Altura</label><input id="kA" type="text" inputmode="decimal" autocomplete="off"></div>
       </div>
       <p id="warn" class="warn" hidden></p>
     </div>
@@ -266,11 +266,26 @@ function addBox(type,layer,sx,sy,sz,x,y,z,dims){
 function geom(){
   const n=Math.max(2,Math.round(P.n));
   const W=n*P.Lr+(n-1)*P.folga;
+  SC=Math.max(P.C,W)/1200;
   const L=P.C;
   const H=P.E+P.kA+P.tE+P.E;
   return {n,W,L,H};
 }
 
+let SC=1, lastFit=0;
+/* enquadra a câmara quando o tamanho da palete muda muito (ex.: medidas em cm em vez de mm) */
+function fitCamera(force){
+  const size=Math.max(G.L,G.W,G.H);
+  const tgt=new THREE.Vector3(0,G.H/2,0);
+  if(force||!lastFit||size/lastFit>1.4||lastFit/size>1.4){
+    lastFit=size;
+    const dir=camera.position.clone().sub(controls.target).normalize();
+    camera.position.copy(tgt.clone().add(dir.multiplyScalar(size*2.35)));
+    camera.near=size/200; camera.far=size*60; camera.updateProjectionMatrix();
+    grid.scale.setScalar(size/1200);
+  }
+  controls.target.copy(tgt);
+}
 function build(){
   // apagar do ecrã as caixas da maquete anterior (o three.js não as remove ao tirar o grupo da cena)
   labelR.domElement.replaceChildren();
@@ -296,6 +311,7 @@ function build(){
   // Ripas do topo (n)
   for(let i=0;i<n;i++) addBox("top",3,L,E,Lr,0,E+kA+tE,i*(Lr+P.folga),[L,Lr,E]);
 
+  if(L<300||W<300) warn.push(`Atenção: as medidas são em milímetros e esta palete tem só ${fmt(L)} × ${fmt(W)} mm. Se escreveste em centímetros, multiplica por 10 (120 cm = 1200 mm).`);
   if(P.folga<0) warn.push("A folga entre ripas não pode ser negativa.");
   if(L<3*Math.max(kC,tL)) warn.push("As ripas são curtas demais para 3 colunas de tacos com esta medida.");
   if(W<3*Math.max(Lr,kL)) warn.push("A palete é estreita demais para 3 filas de tacos. Aumenta o nº de ripas do topo ou a folga.");
@@ -303,7 +319,7 @@ function build(){
 
   $("tC").value = fmt(W);
   addTags(); addDims(); fillTable(); applyExplode(); refreshFichaPlaceholders();
-  controls.target.set(0,G.H/2+60,0);
+  fitCamera();
   save();
 }
 
@@ -321,10 +337,10 @@ function addTags(){
     const [c,l,e]=u.dims, [sx,sy,sz]=u.size;
     const lbl=u.type==="blk"?`${fmt(c)} × ${fmt(l)} × ${fmt(e)} (alt.)`:`${fmt(c)} × ${fmt(l)} × ${fmt(e)}`;
     const o=new THREE.CSS2DObject(tagEl("tag",`${TYPES[u.type].name}<span>${lbl}</span>`));
-    if(u.type==="top") o.position.set(sx*.32, sy/2+6, 0);
-    if(u.type==="bot") o.position.set(-sx*.32, sy/2+6, 0);
-    if(u.type==="str") o.position.set(0, sy/2+6, sz*.25);
-    if(u.type==="blk") o.position.set(sx/2+40, 0, 0);
+    if(u.type==="top") o.position.set(sx*.32, sy/2+6*SC, 0);
+    if(u.type==="bot") o.position.set(-sx*.32, sy/2+6*SC, 0);
+    if(u.type==="str") o.position.set(0, sy/2+6*SC, sz*.25);
+    if(u.type==="blk") o.position.set(sx/2+40*SC, 0, 0);
     m.add(o); tags.push(o);
   });
   tags.forEach(o=>o.visible=$("showTags").checked);
@@ -336,8 +352,8 @@ function dimLine(a,b,ext,text){
   const mat=new THREE.LineBasicMaterial({color:new THREE.Color(col)}); dimMats.push(mat);
   const A=a.clone().add(ext), B=b.clone().add(ext);
   line(a,A,mat); line(b,B,mat); line(A,B,mat);
-  const dir=B.clone().sub(A).normalize().multiplyScalar(25);
-  const perp=ext.clone().normalize().multiplyScalar(12);
+  const dir=B.clone().sub(A).normalize().multiplyScalar(25*SC);
+  const perp=ext.clone().normalize().multiplyScalar(12*SC);
   [[A,1],[B,-1]].forEach(([p,s])=>{line(p.clone().add(dir.clone().multiplyScalar(s)).add(perp),p,mat);line(p.clone().add(dir.clone().multiplyScalar(s)).sub(perp),p,mat);});
   const pos=A.clone().add(B).multiplyScalar(.5);
   const o=new THREE.CSS2DObject(tagEl("dimtag",text)); o.position.copy(pos); dimGroup.add(o);
@@ -345,9 +361,9 @@ function dimLine(a,b,ext,text){
 }
 function addDims(){
   const {L,W,H}=G, hx=L/2, hz=W/2;
-  dimLine(new THREE.Vector3(-hx,0,hz),new THREE.Vector3(hx,0,hz),new THREE.Vector3(0,0,170),`${fmt(L)} mm`);
-  dimLine(new THREE.Vector3(hx,0,-hz),new THREE.Vector3(hx,0,hz),new THREE.Vector3(170,0,0),`${fmt(W)} mm`);
-  dimLine(new THREE.Vector3(-hx,0,hz),new THREE.Vector3(-hx,H,hz),new THREE.Vector3(-170,0,0),`${fmt(H)} mm`);
+  dimLine(new THREE.Vector3(-hx,0,hz),new THREE.Vector3(hx,0,hz),new THREE.Vector3(0,0,170*SC),`${fmt(L)} mm`);
+  dimLine(new THREE.Vector3(hx,0,-hz),new THREE.Vector3(hx,0,hz),new THREE.Vector3(170*SC,0,0),`${fmt(W)} mm`);
+  dimLine(new THREE.Vector3(-hx,0,hz),new THREE.Vector3(-hx,H,hz),new THREE.Vector3(-170*SC,0,0),`${fmt(H)} mm`);
   setDimsVisible($("showDims").checked);
 }
 /* o CSS2DRenderer não herda a visibilidade do grupo: esconder cada caixa também */
@@ -384,7 +400,7 @@ function pesoAuto(){
 }
 
 function applyExplode(){
-  const e=+$("explode").value;
+  const e=+$("explode").value*SC;
   pieces.forEach(m=>m.position.y=m.userData.baseY+m.userData.layer*e);
 }
 
@@ -439,8 +455,8 @@ function snapshot(){
   pieces.forEach(m=>m.position.y=m.userData.baseY);
   if(sel){ sel.material=mats[sel.userData.type]; }
 
-  const cam=new THREE.PerspectiveCamera(28,Wpx/Hpx,10,30000);
-  const size=Math.max(G.L,G.W)+400;
+  const size=Math.max(G.L,G.W)+400*SC;
+  const cam=new THREE.PerspectiveCamera(28,Wpx/Hpx,size/200,size*60);
   cam.position.set(size*1.05,size*0.85,size*1.25);
   cam.lookAt(0,G.H/2,0);
   renderer.setPixelRatio(1);
@@ -524,7 +540,7 @@ function pieceSnapshot(type,c,l,e,thirdName){
   const eg=new THREE.EdgesGeometry(geo); mesh.add(new THREE.LineSegments(eg,edgeMat));
   const lmat=new THREE.LineBasicMaterial({color:new THREE.Color(DIMCOL)});
   const geos=[geo,eg], labels=[];
-  const off=Math.max(D*0.09,30), tick=Math.max(D*0.018,6);
+  const off=D*0.12, tick=D*0.022;
   const ln=(a,b)=>{const g=new THREE.BufferGeometry().setFromPoints([a,b]);geos.push(g);ps.add(new THREE.Line(g,lmat));};
   const dim=(a,b,ext,text)=>{
     const A=a.clone().add(ext),B=b.clone().add(ext);
@@ -538,9 +554,9 @@ function pieceSnapshot(type,c,l,e,thirdName){
   dim(new THREE.Vector3(hx,-hy,-hz),new THREE.Vector3(hx,-hy,hz),new THREE.Vector3(off,0,0),`${fmt(l)} mm`);
   dim(new THREE.Vector3(-hx,-hy,hz),new THREE.Vector3(-hx,hy,hz),new THREE.Vector3(-off,0,0),`${fmt(e)} mm`);
 
-  const fov=24, cam=new THREE.PerspectiveCamera(fov,Wpx/Hpx,1,100000);
   const r=Math.sqrt(c*c+l*l+e*e)/2+off*1.6;
-  const dist=r/Math.sin(fov*Math.PI/360)*1.02;
+  const fov=24, dist=r/Math.sin(fov*Math.PI/360)*1.02;
+  const cam=new THREE.PerspectiveCamera(fov,Wpx/Hpx,dist/100,dist*10);
   const v=(c>2.5*Math.max(l,e)?new THREE.Vector3(0.2,0.55,1):new THREE.Vector3(0.55,0.5,1)).normalize().multiplyScalar(dist);
   cam.position.copy(v); cam.lookAt(0,0,0);
 
@@ -761,11 +777,11 @@ $("pdfBtn").addEventListener("click",async()=>{
 
 /* ---------- controlos ---------- */
 function toInputs(){
-  fields.forEach(f=>$(f).value=P[f]);
+  fields.forEach(f=>$(f).value=String(P[f]).replace(".",","));
   fichaFields.forEach(f=>$(f).value=F[f]||"");
 }
 fields.forEach(f=>$(f).addEventListener("input",()=>{
-  const v=parseFloat($(f).value); if(!(v>=0)) return;
+  const v=parseFloat(String($(f).value).replace(",",".")); if(!(v>=0)) return;
   if(f!=="folga"&&!(v>0)) return;
   P[f]=f==="n"?Math.round(v):v; build();
 }));
