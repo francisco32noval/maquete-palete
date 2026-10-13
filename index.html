@@ -63,6 +63,19 @@ summary span{display:block;font-weight:400;font-size:12.5px;color:var(--muted);m
 .btn:disabled{opacity:.55;cursor:default}
 button.ghost{font:inherit;font-size:12px;background:none;border:1px solid var(--line);color:var(--fg);border-radius:6px;padding:5px 9px;cursor:pointer;white-space:nowrap}
 button.ghost:hover{border-color:var(--accent)}
+.units{display:flex;gap:0;border:1px solid var(--line);border-radius:7px;overflow:hidden;width:max-content}
+.units button{font:inherit;font-size:13px;font-weight:500;background:transparent;color:var(--fg);border:0;border-right:1px solid var(--line);padding:7px 16px;cursor:pointer}
+.units button:last-child{border-right:0}
+.units button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.modal{position:fixed;inset:0;background:rgba(20,16,12,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+.modal-box{background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:12px;padding:22px 22px 20px;max-width:380px;width:100%;display:flex;flex-direction:column;gap:14px}
+.modal-box h2{margin:0;font-size:18px}
+.modal-box p{margin:0;color:var(--muted);line-height:1.45}
+.modal-units{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.modal-units button{font:inherit;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:9px;padding:14px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px}
+.modal-units button b{font-size:20px}
+.modal-units button span{font-size:12px;color:var(--muted)}
+.modal-units button:hover{border-color:var(--accent)}
 .status{font-size:12.5px;color:var(--muted);margin:0;min-height:1.2em}
 .status.ok{color:var(--ok)} .status.bad{color:var(--warn)}
 main{position:relative;background:var(--scene);min-width:0;overflow:hidden}
@@ -88,7 +101,16 @@ main.clean .info,main.clean .hint{display:none}
   <aside>
     <div>
       <h1>Maquete de Palete 3D</h1>
-      <p class="sub">Muda as medidas das peças e a maquete atualiza na hora. No fim, descarrega a ficha técnica em PDF. Todas as medidas em milímetros.</p>
+      <p class="sub">Muda as medidas das peças e a maquete atualiza na hora. No fim, descarrega a ficha técnica em PDF. Todas as medidas na unidade escolhida.</p>
+    </div>
+
+    <div>
+      <p class="lbl" id="unitLbl">Unidade das medidas</p>
+      <div class="units" role="group" aria-labelledby="unitLbl">
+        <button type="button" data-unit="mm" aria-pressed="true">mm</button>
+        <button type="button" data-unit="cm" aria-pressed="false">cm</button>
+        <button type="button" data-unit="m" aria-pressed="false">m</button>
+      </div>
     </div>
 
     <div>
@@ -137,7 +159,7 @@ main.clean .info,main.clean .hint{display:none}
     <div>
       <p class="lbl">Lista de corte</p>
       <table>
-        <thead><tr><th>Peça</th><th class="n">Qtd</th><th class="n">C × L × E</th></tr></thead>
+        <thead><tr><th>Peça</th><th class="n">Qtd</th><th class="n">C × L × E <span style="text-transform:none">(<span class="uName">mm</span>)</span></th></tr></thead>
         <tbody id="cut"></tbody>
       </table>
       <div id="totals" class="totals"></div>
@@ -168,6 +190,18 @@ main.clean .info,main.clean .hint{display:none}
       </div>
     </details>
   </aside>
+
+  <div class="modal" id="unitModal" hidden role="dialog" aria-modal="true" aria-labelledby="unitTitle">
+    <div class="modal-box">
+      <h2 id="unitTitle">Em que unidade vais escrever as medidas?</h2>
+      <p>Podes mudar a unidade mais tarde, no topo do painel. As medidas já escritas são convertidas.</p>
+      <div class="modal-units">
+        <button type="button" data-unit="mm"><b>mm</b><span>milímetros</span></button>
+        <button type="button" data-unit="cm"><b>cm</b><span>centímetros</span></button>
+        <button type="button" data-unit="m"><b>m</b><span>metros</span></button>
+      </div>
+    </div>
+  </div>
 
   <main>
     <div id="view"></div>
@@ -203,9 +237,14 @@ const fields = Object.keys(DEFAULTS);
 const fichaFields = Object.keys(FICHA_DEFAULTS);
 let P = {...DEFAULTS};
 let F = {...FICHA_DEFAULTS};
-try{ const s=JSON.parse(localStorage.getItem("palete-v3")||"null"); if(s){ Object.assign(P,s.P||{}); Object.assign(F,s.F||{}); } }catch(e){}
-function save(){ try{ localStorage.setItem("palete-v3",JSON.stringify({P,F})); }catch(e){} }
+/* unidade: os valores internos estão sempre em mm; só a apresentação muda */
+const UNITS={mm:{f:1,dec:1},cm:{f:10,dec:2},m:{f:1000,dec:3}};
+let U="mm", unitChosen=false;
+try{ const s=JSON.parse(localStorage.getItem("palete-v3")||"null"); if(s){ Object.assign(P,s.P||{}); Object.assign(F,s.F||{}); if(UNITS[s.U]){U=s.U; unitChosen=true;} } }catch(e){}
+function save(){ try{ localStorage.setItem("palete-v3",JSON.stringify(unitChosen?{P,F,U}:{P,F})); }catch(e){} }
 const fmt = v => Number.isInteger(+v) ? String(+v) : (+v).toFixed(1).replace(".",",");
+const fmtU = v => { const x=(+v)/UNITS[U].f; return String(+x.toFixed(UNITS[U].dec)).replace(".",","); };
+const withU = v => `${fmtU(v)} ${U}`;
 
 /* ---------- cena ---------- */
 const host = $("view");
@@ -311,13 +350,13 @@ function build(){
   // Ripas do topo (n)
   for(let i=0;i<n;i++) addBox("top",3,L,E,Lr,0,E+kA+tE,i*(Lr+P.folga),[L,Lr,E]);
 
-  if(L<300||W<300) warn.push(`Atenção: as medidas são em milímetros e esta palete tem só ${fmt(L)} × ${fmt(W)} mm. Se escreveste em centímetros, multiplica por 10 (120 cm = 1200 mm).`);
+  if(U==="mm"&&(L<300||W<300)) warn.push(`Atenção: estás a usar milímetros e esta palete tem só ${fmt(L)} × ${fmt(W)} mm. Se escreveste em centímetros, muda a unidade para cm no topo do painel.`);
   if(P.folga<0) warn.push("A folga entre ripas não pode ser negativa.");
   if(L<3*Math.max(kC,tL)) warn.push("As ripas são curtas demais para 3 colunas de tacos com esta medida.");
   if(W<3*Math.max(Lr,kL)) warn.push("A palete é estreita demais para 3 filas de tacos. Aumenta o nº de ripas do topo ou a folga.");
   $("warn").hidden=!warn.length; $("warn").textContent=warn.join(" ");
 
-  $("tC").value = fmt(W);
+  $("tC").value = fmtU(W);
   addTags(); addDims(); fillTable(); applyExplode(); refreshFichaPlaceholders();
   fitCamera();
   save();
@@ -335,7 +374,7 @@ function addTags(){
     if(u.type==="blk"&&(Math.abs(m.position.x)>1||Math.abs(m.position.z)>1)) return; // taco do centro
     seen[u.type]=true;
     const [c,l,e]=u.dims, [sx,sy,sz]=u.size;
-    const lbl=u.type==="blk"?`${fmt(c)} × ${fmt(l)} × ${fmt(e)} (alt.)`:`${fmt(c)} × ${fmt(l)} × ${fmt(e)}`;
+    const lbl=(u.type==="blk"?`${fmtU(c)} × ${fmtU(l)} × ${fmtU(e)} ${U} (alt.)`:`${fmtU(c)} × ${fmtU(l)} × ${fmtU(e)} ${U}`);
     const o=new THREE.CSS2DObject(tagEl("tag",`${TYPES[u.type].name}<span>${lbl}</span>`));
     if(u.type==="top") o.position.set(sx*.32, sy/2+6*SC, 0);
     if(u.type==="bot") o.position.set(-sx*.32, sy/2+6*SC, 0);
@@ -361,9 +400,9 @@ function dimLine(a,b,ext,text){
 }
 function addDims(){
   const {L,W,H}=G, hx=L/2, hz=W/2;
-  dimLine(new THREE.Vector3(-hx,0,hz),new THREE.Vector3(hx,0,hz),new THREE.Vector3(0,0,170*SC),`${fmt(L)} mm`);
-  dimLine(new THREE.Vector3(hx,0,-hz),new THREE.Vector3(hx,0,hz),new THREE.Vector3(170*SC,0,0),`${fmt(W)} mm`);
-  dimLine(new THREE.Vector3(-hx,0,hz),new THREE.Vector3(-hx,H,hz),new THREE.Vector3(-170*SC,0,0),`${fmt(H)} mm`);
+  dimLine(new THREE.Vector3(-hx,0,hz),new THREE.Vector3(hx,0,hz),new THREE.Vector3(0,0,170*SC),withU(L));
+  dimLine(new THREE.Vector3(hx,0,-hz),new THREE.Vector3(hx,0,hz),new THREE.Vector3(170*SC,0,0),withU(W));
+  dimLine(new THREE.Vector3(-hx,0,hz),new THREE.Vector3(-hx,H,hz),new THREE.Vector3(-170*SC,0,0),withU(H));
   setDimsVisible($("showDims").checked);
 }
 /* o CSS2DRenderer não herda a visibilidade do grupo: esconder cada caixa também */
@@ -387,11 +426,11 @@ function fillTable(){
   let html="";
   pieceRows().forEach(r=>{
     const hex="#"+TYPES[r.type].color.toString(16).padStart(6,"0");
-    html+=`<tr><td><span style="display:flex;gap:6px;align-items:center"><span class="sw" style="background:${hex}"></span>${r.name}</span></td><td class="n mono">${r.q}</td><td class="n mono">${fmt(r.c)} × ${fmt(r.l)} × ${fmt(r.e)}</td></tr>`;
+    html+=`<tr><td><span style="display:flex;gap:6px;align-items:center"><span class="sw" style="background:${hex}"></span>${r.name}</span></td><td class="n mono">${r.q}</td><td class="n mono">${fmtU(r.c)} × ${fmtU(r.l)} × ${fmtU(r.e)}</td></tr>`;
   });
   $("cut").innerHTML=html;
   const vol=volume();
-  $("totals").innerHTML=`Palete: ${fmt(G.L)} × ${fmt(G.W)} × ${fmt(G.H)} mm<br>Peças: ${G.n+15} · Madeira: ${vol.toFixed(4).replace(".",",")} m³<br>Peso estimado: ≈ ${pesoAuto()}`;
+  $("totals").innerHTML=`Palete: ${fmtU(G.L)} × ${fmtU(G.W)} × ${fmtU(G.H)} ${U}<br>Peças: ${G.n+15} · Madeira: ${vol.toFixed(4).replace(".",",")} m³<br>Peso estimado: ≈ ${pesoAuto()}`;
 }
 function pesoAuto(){
   const d=parseFloat(F.f_dens)||450;
@@ -420,7 +459,7 @@ renderer.domElement.addEventListener("pointerup",e=>{
     sel.material=hiMat; const u=sel.userData;
     const q=pieces.filter(p=>p.userData.type===u.type).length;
     const third=u.type==="blk"?"Altura":"Espessura";
-    info.innerHTML=`<b>${TYPES[u.type].name}</b><span class="mono">Comprimento ${fmt(u.dims[0])} mm<br>Largura ${fmt(u.dims[1])} mm<br>${third} ${fmt(u.dims[2])} mm</span><br>${q} peça${q>1?"s":""} iguais nesta palete`;
+    info.innerHTML=`<b>${TYPES[u.type].name}</b><span class="mono">Comprimento ${withU(u.dims[0])}<br>Largura ${withU(u.dims[1])}<br>${third} ${withU(u.dims[2])}</span><br>${q} peça${q>1?"s":""} iguais nesta palete`;
     info.hidden=false;
   } else info.hidden=true;
 });
@@ -438,7 +477,7 @@ function val(id){ const v=(F[id]||"").trim(); if(v) return v; const a=autoVals()
 function refreshFichaPlaceholders(){
   const a=autoVals();
   for(const k in a) if($(k)) $(k).placeholder=a[k];
-  $("curDims").textContent=`${fmt(G.L)}×${fmt(G.W)}×${fmt(G.H)} mm`;
+  $("curDims").textContent=`${fmtU(G.L)}×${fmtU(G.W)}×${fmtU(G.H)} ${U}`;
 }
 
 /* ---------- imagem da palete para a ficha ---------- */
@@ -550,9 +589,9 @@ function pieceSnapshot(type,c,l,e,thirdName){
     labels.push({pos:A.clone().add(B).multiplyScalar(.5).add(ext.clone().normalize().multiplyScalar(off*.45)),text});
   };
   const hx=c/2,hy=e/2,hz=l/2;
-  dim(new THREE.Vector3(-hx,-hy,hz),new THREE.Vector3(hx,-hy,hz),new THREE.Vector3(0,0,off),`${fmt(c)} mm`);
-  dim(new THREE.Vector3(hx,-hy,-hz),new THREE.Vector3(hx,-hy,hz),new THREE.Vector3(off,0,0),`${fmt(l)} mm`);
-  dim(new THREE.Vector3(-hx,-hy,hz),new THREE.Vector3(-hx,hy,hz),new THREE.Vector3(-off,0,0),`${fmt(e)} mm`);
+  dim(new THREE.Vector3(-hx,-hy,hz),new THREE.Vector3(hx,-hy,hz),new THREE.Vector3(0,0,off),withU(c));
+  dim(new THREE.Vector3(hx,-hy,-hz),new THREE.Vector3(hx,-hy,hz),new THREE.Vector3(off,0,0),withU(l));
+  dim(new THREE.Vector3(-hx,-hy,hz),new THREE.Vector3(-hx,hy,hz),new THREE.Vector3(-off,0,0),withU(e));
 
   const r=Math.sqrt(c*c+l*l+e*e)/2+off*1.6;
   const fov=24, dist=r/Math.sin(fov*Math.PI/360)*1.02;
@@ -666,9 +705,9 @@ function makePdf(){
   row("Identificação do produto",desig);
   row("Material",val("f_mat"));
   row("Dimensões",null);
-  row("Comprimento",`${fmt(G.L)} mm`,{sub:true});
-  row("Largura",`${fmt(G.W)} mm`,{sub:true});
-  row("Altura",`${fmt(G.H)} mm`,{sub:true});
+  row("Comprimento",withU(G.L),{sub:true});
+  row("Largura",withU(G.W),{sub:true});
+  row("Altura",withU(G.H),{sub:true});
   row("Peso",val("f_peso"));
   row("Tratamento fitossanitário",val("f_trat"));
   row("Teor de humidade da madeira",val("f_hum"));
@@ -684,7 +723,7 @@ function makePdf(){
   cols.forEach(c=>{doc.setFillColor(...HEAD);doc.rect(x,y,c.w,5.4,"FD");font("bold",9,MUTED);doc.text(c.t,c.a==="left"?x+2.5:x+c.w/2,y+3.8,{align:c.a});x+=c.w;});
   y+=5.4;
   pieceRows().forEach(r=>{
-    const cells=[r.name,String(r.q),`${fmt(r.c)} mm`,`${fmt(r.l)} mm`,`${fmt(r.e)} mm`];
+    const cells=[r.name,String(r.q),withU(r.c),withU(r.l),withU(r.e)];
     x=X0;
     cols.forEach((c,i)=>{doc.rect(x,y,c.w,5.6,"S");font(i===0?"bold":"normal",9.5,INK);doc.text(cells[i],c.a==="left"?x+2.5:x+c.w/2,y+3.9,{align:c.a});x+=c.w;});
     y+=5.6;
@@ -718,7 +757,7 @@ function makePdf(){
     font("normal",8.5,MUTED); doc.text(doc.splitTextToSize("Quantidade: "+pt.qty,INFOW-2),INFOX,yy); yy+=7;
     [["Comprimento",pt.c],["Largura",pt.l],[pt.third,pt.e]].forEach(([k,v])=>{
       font("normal",9.5,MUTED); doc.text(k,INFOX,yy);
-      font("bold",9.5,INK); doc.text(`${fmt(v)} mm`,X1-3,yy,{align:"right"});
+      font("bold",9.5,INK); doc.text(withU(v),X1-3,yy,{align:"right"});
       doc.setDrawColor(...LINE); doc.line(INFOX,yy+1.8,X1-3,yy+1.8);
       yy+=6.2;
     });
@@ -777,17 +816,26 @@ $("pdfBtn").addEventListener("click",async()=>{
 
 /* ---------- controlos ---------- */
 function toInputs(){
-  fields.forEach(f=>$(f).value=String(P[f]).replace(".",","));
+  fields.forEach(f=>$(f).value= f==="n" ? String(P[f]) : fmtU(P[f]));
   fichaFields.forEach(f=>$(f).value=F[f]||"");
 }
 fields.forEach(f=>$(f).addEventListener("input",()=>{
   const v=parseFloat(String($(f).value).replace(",",".")); if(!(v>=0)) return;
   if(f!=="folga"&&!(v>0)) return;
-  P[f]=f==="n"?Math.round(v):v; build();
+  P[f]=f==="n"?Math.round(v):v*UNITS[U].f; build();
 }));
+function setUnit(u){
+  if(!UNITS[u]) return;
+  U=u; unitChosen=true;
+  document.querySelectorAll(".units button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.unit===U)));
+  document.querySelectorAll(".uName").forEach(e=>e.textContent=U);
+  toInputs(); build();
+}
+document.querySelectorAll(".units button").forEach(b=>b.addEventListener("click",()=>setUnit(b.dataset.unit)));
+document.querySelectorAll(".modal-units button").forEach(b=>b.addEventListener("click",()=>{ $("unitModal").hidden=true; setUnit(b.dataset.unit); $("C").focus(); }));
 $("insDims").addEventListener("click",()=>{
-  const d=`${fmt(G.L)}×${fmt(G.W)}×${fmt(G.H)} mm`;
-  const cur=($("f_desig").value||"").replace(/\s*\d+(?:[.,]\d+)?×\d+(?:[.,]\d+)?×\d+(?:[.,]\d+)?\s*mm\s*$/,"").trim();
+  const d=`${fmtU(G.L)}×${fmtU(G.W)}×${fmtU(G.H)} ${U}`;
+  const cur=($("f_desig").value||"").replace(/\s*\d+(?:[.,]\d+)?×\d+(?:[.,]\d+)?×\d+(?:[.,]\d+)?\s*(?:mm|cm|m)\s*$/,"").trim();
   $("f_desig").value=(cur?cur+" ":"")+d; F.f_desig=$("f_desig").value; save(); $("f_desig").focus();
 });
 fichaFields.forEach(f=>$(f).addEventListener("input",()=>{
@@ -825,7 +873,10 @@ function resize(){
 }
 new ResizeObserver(resize).observe(host);
 
+document.querySelectorAll(".units button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.unit===U)));
+document.querySelectorAll(".uName").forEach(e=>e.textContent=U);
 toInputs(); themeColors(); build(); resize();
+if(!unitChosen) $("unitModal").hidden=false;
 (function loop(){requestAnimationFrame(loop);controls.update();renderer.render(scene,camera);labelR.render(scene,camera);})();
 </script>
 

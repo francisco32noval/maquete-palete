@@ -10,13 +10,14 @@ Funciona no navegador (Chrome, Edge ou Firefox) e não precisa de instalação n
    - No GitHub, carrega no botão verde **Code** e depois em **Download ZIP**.
    - Extrai o ZIP para uma pasta do teu PC (por exemplo, `Documentos\maquete-palete`).
 2. Abre o ficheiro **`index.html`** com duplo clique. Abre no navegador.
-3. Preenche as medidas:
+3. Na primeira vez, escolhe a unidade em que vais escrever as medidas: **mm**, **cm** ou **m**. Podes mudá-la depois no topo do painel. As medidas já escritas são convertidas e a ficha técnica sai na mesma unidade.
+4. Preenche as medidas:
    - **Ripas**: comprimento, largura e espessura. As ripas do topo e da base são iguais. A base leva sempre 3 ripas.
    - **Nº de ripas no topo** e **folga entre ripas**: definem a largura da palete e o comprimento das travessas.
    - **Travessas (3)**: largura e espessura. O comprimento é calculado sozinho.
    - **Tacos (9 iguais)**: comprimento, largura e altura.
-4. Na secção **Ficha técnica**, escreve a designação e a descrição e revê os restantes campos.
-5. Carrega em **Descarregar ficha técnica (PDF)**. O ficheiro vai para a pasta de transferências.
+5. Na secção **Ficha técnica**, escreve a designação e a descrição e revê os restantes campos.
+6. Carrega em **Descarregar ficha técnica (PDF)**. O ficheiro vai para a pasta de transferências.
 
 As medidas e os campos da ficha ficam guardados no navegador desse PC. Na próxima vez que abrires o programa, voltam a aparecer.
 
