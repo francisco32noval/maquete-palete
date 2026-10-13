@@ -16,10 +16,19 @@ Funciona no navegador (Chrome, Edge ou Firefox) e não precisa de instalação n
    - **Nº de ripas no topo** e **folga entre ripas**: definem a largura da palete e o comprimento das travessas.
    - **Travessas (3)**: largura e espessura. O comprimento é calculado sozinho.
    - **Tacos (9 iguais)**: comprimento, largura e altura.
-5. Na secção **Ficha técnica**, escreve a designação e a descrição e revê os restantes campos.
+5. Na secção **Ficha técnica**, carrega em **Editar**. Na janela que abre, escreve a designação e a descrição e revê os restantes campos.
 6. Carrega em **Descarregar ficha técnica (PDF)**. O ficheiro vai para a pasta de transferências.
 
 As medidas e os campos da ficha ficam guardados no navegador desse PC. Na próxima vez que abrires o programa, voltam a aparecer.
+
+## Paletes guardadas
+
+Para não teres de escrever as mesmas medidas várias vezes:
+
+- **Gravar**: escreve um nome na secção **Paletes guardadas** e carrega em **Gravar**. Fica gravado tudo: as medidas, a unidade e os campos da ficha técnica. Se o nome já existir, o botão passa a **Substituir**.
+- **Abrir**: carrega em **Abrir** ao lado da palete. As medidas e a ficha voltam a aparecer.
+- **Apagar**: carrega em **Apagar** e depois em **Confirmar**.
+- **Exportar / Importar**: as paletes ficam gravadas só no navegador deste PC. Usa **Exportar** para criar um ficheiro `paletes-guardadas.json`, que serve de cópia de segurança e pode ser enviado a colegas. Do outro lado, basta carregar em **Importar** e escolher esse ficheiro.
 
 ## Atalhos na maquete
 

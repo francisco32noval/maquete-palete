@@ -58,7 +58,7 @@ td.mono{font-family:var(--f-num);font-variant-numeric:tabular-nums;white-space:n
 details{border-top:1px solid var(--line);padding-top:14px}
 summary{cursor:pointer;font-weight:700;font-size:15px;list-style-position:outside}
 summary span{display:block;font-weight:400;font-size:12.5px;color:var(--muted);margin-top:2px}
-.ficha{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.ficha{display:flex;flex-direction:column;gap:10px}
 .btn{font:inherit;font-weight:700;font-size:14px;background:var(--accent);color:#fff;border:0;border-radius:7px;padding:11px 14px;cursor:pointer}
 .btn:disabled{opacity:.55;cursor:default}
 button.ghost{font:inherit;font-size:12px;background:none;border:1px solid var(--line);color:var(--fg);border-radius:6px;padding:5px 9px;cursor:pointer;white-space:nowrap}
@@ -76,6 +76,19 @@ button.ghost:hover{border-color:var(--accent)}
 .modal-units button b{font-size:20px}
 .modal-units button span{font-size:12px;color:var(--muted)}
 .modal-units button:hover{border-color:var(--accent)}
+.sec{border-top:1px solid var(--line);padding-top:14px}
+.sec-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.sec-head h2{margin:0;font-size:15px;font-weight:700}
+button.ghost.strong{font-weight:700;border-color:var(--accent);color:var(--accent)}
+.saved{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.saved li{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:7px;padding:7px 8px;background:var(--bg)}
+.saved li.cur{border-color:var(--accent)}
+.saved .nm{flex:1;min-width:0}
+.saved .nm b{display:block;font-weight:500;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.saved .nm span{display:block;font-family:var(--f-num);font-size:11px;color:var(--muted)}
+.saved button{flex:none}
+.saved button.del{color:var(--warn)}
+.modal-box.wide{max-width:560px;max-height:calc(100% - 32px);overflow-y:auto}
 .status{font-size:12.5px;color:var(--muted);margin:0;min-height:1.2em}
 .status.ok{color:var(--ok)} .status.bad{color:var(--warn)}
 main{position:relative;background:var(--scene);min-width:0;overflow:hidden}
@@ -112,6 +125,22 @@ main.clean .info,main.clean .hint{display:none}
         <button type="button" data-unit="m" aria-pressed="false">m</button>
       </div>
     </div>
+
+    <section class="sec" aria-labelledby="savedH">
+      <div class="sec-head"><h2 id="savedH">Paletes guardadas</h2></div>
+      <ul class="saved" id="savedList"></ul>
+      <p class="note" id="savedEmpty" style="margin:0">Ainda não tens paletes guardadas. Define as medidas e grava-as com um nome.</p>
+      <div class="row" style="margin-top:10px">
+        <input id="saveName" type="text" placeholder="Nome (ex.: Palete 1200×800 cliente X)" autocomplete="off">
+        <button class="ghost strong" id="saveBtn" type="button">Gravar</button>
+      </div>
+      <p class="status" id="savedStatus" role="status"></p>
+      <div class="row" style="gap:8px;margin-top:2px">
+        <button class="ghost" id="expBtn" type="button">Exportar</button>
+        <button class="ghost" id="impBtn" type="button">Importar</button>
+        <input id="impFile" type="file" accept=".json,application/json" hidden>
+      </div>
+    </section>
 
     <div>
       <p class="lbl"><span class="sw" style="background:#d8b27a"></span>Ripas (topo e base iguais)</p>
@@ -165,8 +194,18 @@ main.clean .info,main.clean .hint{display:none}
       <div id="totals" class="totals"></div>
     </div>
 
-    <details id="fichaBox" open>
-      <summary>Ficha técnica<span>A designação e a descrição são tuas. A data e o peso ficam automáticos se os deixares em branco.</span></summary>
+    <section class="sec" aria-labelledby="fichaH">
+      <div class="sec-head"><h2 id="fichaH">Ficha técnica</h2><button class="ghost" id="fichaEdit" type="button">Editar</button></div>
+      <p class="note" id="fichaResumo" style="margin:0 0 10px"></p>
+      <button class="btn" id="pdfBtn" type="button">Descarregar ficha técnica (PDF)</button>
+      <p class="status" id="pdfStatus" role="status"></p>
+    </section>
+  </aside>
+
+  <div class="modal" id="fichaModal" hidden role="dialog" aria-modal="true" aria-labelledby="fichaTitle">
+    <div class="modal-box wide">
+      <div class="sec-head"><h2 id="fichaTitle">Ficha técnica</h2><button class="ghost" id="fichaClose" type="button" aria-label="Fechar">Fechar</button></div>
+      <p>A designação e a descrição são tuas. A data e o peso ficam automáticos se os deixares em branco. As alterações ficam gravadas à medida que escreves.</p>
       <div class="ficha">
         <div class="grid3">
           <div class="field"><label for="f_ref">Referência</label><input id="f_ref" type="text"></div>
@@ -185,11 +224,12 @@ main.clean .info,main.clean .hint{display:none}
         <div class="field"><label for="f_hum">Teor de humidade da madeira</label><input id="f_hum" type="text"></div>
         <div class="field"><label for="f_arm">Condições de armazenamento</label><textarea id="f_arm" rows="3"></textarea></div>
         <div class="field"><label for="f_orig">País de origem da madeira</label><input id="f_orig" type="text"></div>
-        <button class="btn" id="pdfBtn" type="button">Descarregar ficha técnica (PDF)</button>
-        <p class="status" id="pdfStatus" role="status"></p>
       </div>
-    </details>
-  </aside>
+      <div class="row" style="justify-content:flex-end;gap:10px">
+        <button class="btn" id="fichaOk" type="button">Concluído</button>
+      </div>
+    </div>
+  </div>
 
   <div class="modal" id="unitModal" hidden role="dialog" aria-modal="true" aria-labelledby="unitTitle">
     <div class="modal-box">
@@ -793,7 +833,7 @@ $("pdfBtn").addEventListener("click",async()=>{
     st.className="status bad";
     st.textContent=miss.length===2?"Preenche a designação e a descrição antes de descarregar a ficha.":
       miss[0]==="f_desig"?"Preenche a designação antes de descarregar a ficha.":"Preenche a descrição antes de descarregar a ficha.";
-    $(miss[0]).focus(); return;
+    openFicha(miss[0]); return;
   }
   st.className="status"; st.textContent="A gerar a ficha…";
   const btn=$("pdfBtn"); btn.disabled=true;
@@ -833,12 +873,105 @@ function setUnit(u){
 }
 document.querySelectorAll(".units button").forEach(b=>b.addEventListener("click",()=>setUnit(b.dataset.unit)));
 document.querySelectorAll(".modal-units button").forEach(b=>b.addEventListener("click",()=>{ $("unitModal").hidden=true; setUnit(b.dataset.unit); $("C").focus(); }));
+/* ---------- janela da ficha técnica ---------- */
+function openFicha(focusId){ $("fichaModal").hidden=false; setTimeout(()=>$(focusId||"f_ref").focus(),0); }
+function closeFicha(){ $("fichaModal").hidden=true; fichaResumo(); $("fichaEdit").focus();
+  if($("pdfStatus").classList.contains("bad")&&(F.f_desig||"").trim()&&(F.f_desc||"").trim()){ $("pdfStatus").textContent=""; $("pdfStatus").className="status"; } }
+function fichaResumo(){
+  const d=(F.f_desig||"").trim();
+  $("fichaResumo").textContent = d ? d : "Ainda sem designação. Carrega em Editar para preencher a ficha.";
+}
+$("fichaEdit").addEventListener("click",()=>openFicha());
+$("fichaClose").addEventListener("click",closeFicha);
+$("fichaOk").addEventListener("click",closeFicha);
+$("fichaModal").addEventListener("click",e=>{ if(e.target===$("fichaModal")) closeFicha(); });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&!$("fichaModal").hidden) closeFicha(); });
+
+/* ---------- paletes guardadas ---------- */
+const LIB_KEY="palete-biblioteca-v1";
+let LIB=[], curName="";
+try{ const l=JSON.parse(localStorage.getItem(LIB_KEY)||"[]"); if(Array.isArray(l)) LIB=l; }catch(e){}
+function saveLib(){ try{ localStorage.setItem(LIB_KEY,JSON.stringify(LIB)); return true; }catch(e){ return false; } }
+function libStatus(t,bad){ const st=$("savedStatus"); st.className="status"+(bad?" bad":" ok"); st.textContent=t; }
+function dimsOf(e){
+  const n=Math.max(2,Math.round(e.P.n)), W=n*e.P.Lr+(n-1)*e.P.folga, H=e.P.E+e.P.kA+e.P.tE+e.P.E;
+  const u=UNITS[e.U]?e.U:"mm", f=UNITS[u].f, dec=UNITS[u].dec, q=v=>String(+(v/f).toFixed(dec)).replace(".",",");
+  return `${q(e.P.C)} × ${q(W)} × ${q(H)} ${u}`;
+}
+function esc(t){ const d=document.createElement("div"); d.textContent=t; return d.innerHTML; }
+function renderLib(){
+  const ul=$("savedList"); ul.innerHTML="";
+  $("savedEmpty").hidden=LIB.length>0;
+  LIB.forEach((e,i)=>{
+    const li=document.createElement("li"); if(e.nome===curName) li.className="cur";
+    li.innerHTML=`<div class="nm"><b title="${esc(e.nome)}">${esc(e.nome)}</b><span>${dimsOf(e)}</span></div>
+      <button class="ghost" type="button" data-act="open">Abrir</button>
+      <button class="ghost del" type="button" data-act="del">Apagar</button>`;
+    li.querySelector('[data-act="open"]').addEventListener("click",()=>loadEntry(i));
+    const del=li.querySelector('[data-act="del"]');
+    del.addEventListener("click",()=>{
+      if(del.dataset.armed!=="1"){ del.dataset.armed="1"; del.textContent="Confirmar"; setTimeout(()=>{ if(del.isConnected){del.dataset.armed="";del.textContent="Apagar";} },4000); return; }
+      const nm=LIB[i].nome; LIB.splice(i,1); saveLib(); if(curName===nm) curName=""; renderLib(); libStatus(`"${nm}" apagada.`);
+    });
+    ul.appendChild(li);
+  });
+  $("saveBtn").textContent = LIB.some(e=>e.nome===$("saveName").value.trim()) ? "Substituir" : "Gravar";
+}
+function loadEntry(i){
+  const e=LIB[i]; if(!e) return;
+  Object.assign(P,DEFAULTS,e.P||{});
+  F={...FICHA_DEFAULTS,...(e.F||{})};
+  curName=e.nome; $("saveName").value=e.nome;
+  if(UNITS[e.U]) setUnit(e.U); else { toInputs(); build(); }
+  toInputs(); fichaResumo(); save(); renderLib();
+  libStatus(`"${e.nome}" aberta.`);
+}
+$("saveBtn").addEventListener("click",()=>{
+  const nome=$("saveName").value.trim();
+  if(!nome){ libStatus("Escreve um nome para a palete.",true); $("saveName").focus(); return; }
+  const entry={nome,U,P:{...P},F:{...F},gravada:new Date().toISOString()};
+  const i=LIB.findIndex(e=>e.nome===nome);
+  if(i>=0) LIB[i]=entry; else LIB.push(entry);
+  LIB.sort((a,b)=>a.nome.localeCompare(b.nome,"pt"));
+  curName=nome;
+  if(!saveLib()){ libStatus("Não foi possível gravar neste navegador. Usa Exportar para guardar um ficheiro.",true); return; }
+  renderLib(); libStatus(i>=0?`"${nome}" atualizada.`:`"${nome}" gravada.`);
+});
+$("saveName").addEventListener("input",renderLib);
+$("saveName").addEventListener("keydown",e=>{ if(e.key==="Enter") $("saveBtn").click(); });
+$("expBtn").addEventListener("click",async()=>{
+  if(!LIB.length){ libStatus("Não há paletes guardadas para exportar.",true); return; }
+  const data=JSON.stringify({tipo:"paletes-guardadas",versao:1,paletes:LIB},null,2);
+  const name="paletes-guardadas.json";
+  try{
+    if(!window.claude){ saveLocal(new Blob([data],{type:"application/json"}),name); libStatus("Ficheiro exportado."); return; }
+    if(!downloads) downloads=await window.claude.use("downloads");
+    if(!downloads){ libStatus("Não é possível descarregar ficheiros nesta vista.",true); return; }
+    await downloads.save({filename:name,data}); libStatus("Ficheiro exportado.");
+  }catch(e){ libStatus(e&&e.code==="declined"?"Exportação cancelada.":"Não foi possível exportar.",true); }
+});
+$("impBtn").addEventListener("click",()=>$("impFile").click());
+$("impFile").addEventListener("change",async()=>{
+  const f=$("impFile").files[0]; if(!f) return;
+  try{
+    const j=JSON.parse(await f.text());
+    const arr=Array.isArray(j)?j:j.paletes;
+    if(!Array.isArray(arr)) throw 0;
+    let n=0;
+    arr.forEach(e=>{ if(e&&typeof e.nome==="string"&&e.P){ const i=LIB.findIndex(x=>x.nome===e.nome); if(i>=0) LIB[i]=e; else LIB.push(e); n++; } });
+    LIB.sort((a,b)=>a.nome.localeCompare(b.nome,"pt")); saveLib(); renderLib();
+    libStatus(n?`${n} palete${n>1?"s":""} importada${n>1?"s":""}.`:"O ficheiro não tem paletes.",!n);
+  }catch(e){ libStatus("Este ficheiro não é uma lista de paletes válida.",true); }
+  $("impFile").value="";
+});
+
 $("insDims").addEventListener("click",()=>{
   const d=`${fmtU(G.L)}×${fmtU(G.W)}×${fmtU(G.H)} ${U}`;
   const cur=($("f_desig").value||"").replace(/\s*\d+(?:[.,]\d+)?×\d+(?:[.,]\d+)?×\d+(?:[.,]\d+)?\s*(?:mm|cm|m)\s*$/,"").trim();
   $("f_desig").value=(cur?cur+" ":"")+d; F.f_desig=$("f_desig").value; save(); $("f_desig").focus();
 });
 fichaFields.forEach(f=>$(f).addEventListener("input",()=>{
+  if(f==="f_desig") fichaResumo();
   F[f]=$(f).value; if(f==="f_dens"){ fillTable(); refreshFichaPlaceholders(); } save();
 }));
 $("explode").addEventListener("input",applyExplode);
@@ -876,6 +1009,7 @@ new ResizeObserver(resize).observe(host);
 document.querySelectorAll(".units button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.unit===U)));
 document.querySelectorAll(".uName").forEach(e=>e.textContent=U);
 toInputs(); themeColors(); build(); resize();
+fichaResumo(); renderLib();
 if(!unitChosen) $("unitModal").hidden=false;
 (function loop(){requestAnimationFrame(loop);controls.update();renderer.render(scene,camera);labelR.render(scene,camera);})();
 </script>
