@@ -558,13 +558,13 @@ function refreshFichaPlaceholders(){
 }
 
 /* ---------- imagem da palete para a ficha ---------- */
-function snapshot(){
+function snapshot(view){
   const Wpx=1400, Hpx=900;
   const prev=renderer.getSize(new THREE.Vector2());
   const prevBg=scene.background, prevPR=renderer.getPixelRatio();
   const tagVis=tags.map(t=>t.visible), dimVis=dimGroup.visible;
   scene.background=new THREE.Color(0xffffff); grid.visible=false;
-  tags.forEach(t=>t.visible=false); dimGroup.visible=true;
+  tags.forEach(t=>t.visible=false); dimGroup.visible=!view;
   dimMats.forEach(m=>m.color.set(0x1F3A5F));
   dimLabels.forEach(()=>{});
   dimGroup.children.forEach(o=>{ if(o.isCSS2DObject) o.visible=false; });
@@ -573,7 +573,8 @@ function snapshot(){
 
   const size=Math.max(G.L,G.W)+400*SC;
   const cam=new THREE.PerspectiveCamera(28,Wpx/Hpx,size/200,size*60);
-  cam.position.set(size*1.05,size*0.85,size*1.25);
+  if(view) cam.position.set(-size*1.25,size*0.5,size*1.05);
+  else cam.position.set(size*1.05,size*0.85,size*1.25);
   cam.lookAt(0,G.H/2,0);
   renderer.setPixelRatio(1);
   renderer.setSize(Wpx,Hpx,false);
@@ -584,7 +585,7 @@ function snapshot(){
   g.fillStyle="#fff"; g.fillRect(0,0,Wpx,Hpx);
   g.drawImage(renderer.domElement,0,0,Wpx,Hpx);
   g.font="600 30px Arial, Helvetica, sans-serif"; g.textAlign="center"; g.textBaseline="middle";
-  dimLabels.forEach(d=>{
+  (view?[]:dimLabels).forEach(d=>{
     const p=d.pos.clone().project(cam);
     const x=(p.x+1)/2*Wpx, y=(1-p.y)/2*Hpx;
     const w=g.measureText(d.text).width+18, h=42;
@@ -754,16 +755,18 @@ function makePdf(){
   y+=10+8;
 
   section("DESCRIÇÃO");
-  const snap=snapshot();
-  const imgW=78, imgH=Math.min(46,imgW*snap.h/snap.w);
   font("normal",10,INK);
-  const dl=doc.splitTextToSize(val("f_desc"),CW-imgW-8);
+  const dl=doc.splitTextToSize(val("f_desc"),CW);
   const dh=dl.length*LH(10);
-  const blockH=Math.max(imgH,dh);
-  doc.text(dl,X0,y+(blockH-dh)/2+3.2,{lineHeightFactor:1.25});
-  const iw=imgH*snap.w/snap.h;
-  doc.addImage(snap.url,"JPEG",X1-iw,y,iw,imgH);
-  y+=blockH+7;
+  doc.text(dl,X0,y+3.2,{lineHeightFactor:1.25});
+  y+=dh+5;
+  // a palete em duas perspetivas, lado a lado
+  const views=[snapshot(0),snapshot(1)];
+  const GAP=6, VW=(CW-GAP)/2, VH=56;
+  const fit=v=>{ let w=VW, h=w*v.h/v.w; if(h>VH){ h=VH; w=h*v.w/v.h; } return {w,h}; };
+  const sz=views.map(fit), rowH=Math.max(...sz.map(q=>q.h));
+  views.forEach((v,i)=>{ const q=sz[i], cx=X0+i*(VW+GAP); doc.addImage(v.url,"JPEG",cx+(VW-q.w)/2,y+(rowH-q.h)/2,q.w,q.h); });
+  y+=rowH+7;
 
   section("CARACTERÍSTICAS DO PRODUTO");
   const LW=58;
