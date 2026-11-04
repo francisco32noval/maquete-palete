@@ -197,11 +197,11 @@ main.clean .info,main.clean .hint{display:none}
     <section class="sec" aria-labelledby="fichaH">
       <div class="sec-head"><h2 id="fichaH">Ficha técnica</h2><button class="ghost" id="fichaEdit" type="button">Editar</button></div>
       <p class="note" id="fichaResumo" style="margin:0 0 10px"></p>
-      <div class="field" style="margin-bottom:10px"><label for="f_rod">Rodapé da ficha</label>
+      <div class="field" style="margin-bottom:10px"><label for="f_rod">Empresa no topo da ficha</label>
         <select id="f_rod">
           <option value="acustikideia">AcustiKideia, Lda.</option>
           <option value="habitualescolha">Habitualescolha – Unipessoal, Lda.</option>
-          <option value="nenhum">Sem rodapé</option>
+          <option value="nenhum">Sem empresa</option>
         </select>
       </div>
       <button class="btn" id="pdfBtn" type="button">Descarregar ficha técnica (PDF)</button>
@@ -698,6 +698,11 @@ function makePdf(){
   const font=(w,s,c)=>{doc.setFont("LS",w);doc.setFontSize(s);doc.setTextColor(...(c||INK));};
   const LH=pt=>pt*0.3528*1.25;
   const desig=val("f_desig");
+  // empresa no topo de cada página: o conteúdo desce OFF mm para lhe dar espaço
+  const rod=RODAPES.hasOwnProperty(F.f_rod)?RODAPES[F.f_rod]:RODAPES[FICHA_DEFAULTS.f_rod];
+  const ROD_Y=9, ROD_LH=3.7;
+  const ROD_END=rod?ROD_Y+rod.linhas.length*ROD_LH+2.6:0;
+  const OFF=rod?ROD_END+4-14:0;
 
   const pageHeader=()=>{};  // sem cabeçalho no topo das páginas
   let y;
@@ -710,7 +715,7 @@ function makePdf(){
 
   // ===== página 1 =====
   pageHeader();
-  y=14;
+  y=14+OFF;
   const PTW=20;
   doc.setDrawColor(...NAVY); doc.setLineWidth(.35);
   doc.setFillColor(...NAVY); doc.rect(X0,y,CW-PTW,5.6,"F");
@@ -753,7 +758,7 @@ function makePdf(){
   const row=(label,value,opt={})=>{
     const vl=value===null?[]:(font("normal",9.5),doc.splitTextToSize(String(value),CW-LW-5));
     const h=Math.max(1,vl.length)*LH(9.5)+2.6;
-    if(y+h>276){ doc.addPage(); pageHeader(); y=27; }
+    if(y+h>276){ doc.addPage(); pageHeader(); y=27+OFF; }
     doc.setDrawColor(...LINE); doc.setLineWidth(.2);
     if(value===null){
       doc.setFillColor(...HEAD); doc.rect(X0,y,CW,h,"FD");
@@ -780,7 +785,7 @@ function makePdf(){
   row("País de origem da madeira",val("f_orig"));
   y+=8;
 
-  if(y>244){ doc.addPage(); pageHeader(); y=27; }
+  if(y>244){ doc.addPage(); pageHeader(); y=27+OFF; }
   section("COMPOSIÇÃO DA PALETE");
   const cols=[{t:"Peça",w:52,a:"left"},{t:"Quantidade",w:26,a:"center"},{t:"Comprimento",w:35,a:"center"},{t:"Largura",w:34,a:"center"},{t:"Espessura / Altura",w:35,a:"center"}];
   let x=X0;
@@ -797,7 +802,7 @@ function makePdf(){
   doc.text(`Total: ${G.n+15} peças · ${volume().toFixed(4).replace(".",",")} m³ de madeira`,X0,y+4.5);
 
   // ===== página das peças =====
-  doc.addPage(); pageHeader(); y=27;
+  doc.addPage(); pageHeader(); y=27+OFF;
   section("PEÇAS DA PALETE");
   const rows=pieceRows();
   const top=rows.find(r=>r.type==="top"), bot=rows.find(r=>r.type==="bot");
@@ -811,7 +816,7 @@ function makePdf(){
     let w=IMGW-8, h=w*im.h/im.w;
     if(h>56){ h=56; w=h*im.w/im.h; }
     const boxH=Math.max(h+10,46);
-    if(y+boxH>276){ doc.addPage(); pageHeader(); y=27; }
+    if(y+boxH>276){ doc.addPage(); pageHeader(); y=27+OFF; }
     doc.setDrawColor(...LINE); doc.setLineWidth(.2);
     doc.rect(X0,y,CW,boxH,"S");
     doc.setFillColor(...LABEL); doc.rect(INFOX-4,y,X1-INFOX+4,boxH,"FD");
@@ -831,20 +836,19 @@ function makePdf(){
 
   // rodapé e numeração em todas as páginas
   const pages=doc.getNumberOfPages();
-  const rod=RODAPES.hasOwnProperty(F.f_rod)?RODAPES[F.f_rod]:RODAPES[FICHA_DEFAULTS.f_rod];
   for(let p=1;p<=pages;p++){
     doc.setPage(p);
     if(rod){
-      doc.setDrawColor(...LINE); doc.setLineWidth(.2); doc.line(X0,279.5,X1,279.5);
-      let fy=283.4;
+      let fy=ROD_Y;
       font("bold",8.5,NAVY); doc.text(rod.nome,(X0+X1)/2,fy,{align:"center"});
       font("normal",7.5,MUTED);
-      rod.linhas.forEach(l=>{ fy+=LH(7.5)+0.4; doc.text(l,(X0+X1)/2,fy,{align:"center"}); });
+      rod.linhas.forEach(l=>{ fy+=ROD_LH; doc.text(l,(X0+X1)/2,fy,{align:"center"}); });
+      doc.setDrawColor(...LINE); doc.setLineWidth(.2); doc.line(X0,ROD_END,X1,ROD_END);
     }
     if(p===1){ font("normal",9,INK); doc.text(`Pág. 1 de ${pages}`,pgCell.x,pgCell.y,{align:"center"}); }
     else {
-      doc.setFillColor(...NAVY); doc.rect(X0,12,CW,5.6,"F");
-      font("bold",9,[255,255,255]); doc.text("Ficha Técnica — "+doc.splitTextToSize(desig,CW*0.8)[0],X0+2.5,16);
+      doc.setFillColor(...NAVY); doc.rect(X0,12+OFF,CW,5.6,"F");
+      font("bold",9,[255,255,255]); doc.text("Ficha Técnica — "+doc.splitTextToSize(desig,CW*0.8)[0],X0+2.5,16+OFF);
     }
   }
   return doc;
