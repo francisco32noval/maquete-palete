@@ -151,7 +151,6 @@ main.clean .info,main.clean .hint{display:none}
       </div>
       <div class="grid2" style="margin-top:10px">
         <div class="field"><label for="n">Nº de ripas no topo</label><input id="n" type="text" inputmode="numeric" autocomplete="off"></div>
-        <div class="field"><label for="folga">Folga entre ripas</label><input id="folga" type="text" inputmode="decimal" autocomplete="off"></div>
       </div>
       <p class="note">A base leva sempre 3 ripas, uma por cada fila de tacos.</p>
     </div>
@@ -159,11 +158,11 @@ main.clean .info,main.clean .hint{display:none}
     <div>
       <p class="lbl"><span class="sw" style="background:#c39257"></span>Travessas (3)</p>
       <div class="grid3">
-        <div class="field"><label for="tC">Comprimento</label><input id="tC" type="text" readonly tabindex="-1"></div>
+        <div class="field"><label for="tC">Comprimento</label><input id="tC" type="text" inputmode="decimal" autocomplete="off"></div>
         <div class="field"><label for="tL">Largura</label><input id="tL" type="text" inputmode="decimal" autocomplete="off"></div>
         <div class="field"><label for="tE">Espessura</label><input id="tE" type="text" inputmode="decimal" autocomplete="off"></div>
       </div>
-      <p class="note">O comprimento é calculado pelo nº de ripas do topo, a largura das ripas e a folga.</p>
+      <p class="note" id="folgaNote">O comprimento da travessa é a largura da palete. As ripas do topo ficam distribuídas por igual.</p>
     </div>
 
     <div>
@@ -263,7 +262,17 @@ main.clean .info,main.clean .hint{display:none}
 <script src="lib/CSS2DRenderer.js"></script>
 <script src="lib/jspdf.umd.min.js"></script>
 <script>
-const DEFAULTS = {C:1200,Lr:106,E:25,n:5,folga:60,tL:145,tE:25,kC:145,kL:106,kA:78};
+const DEFAULTS = {C:1200,Lr:106,E:25,n:5,tC:770,tL:145,tE:25,kC:145,kL:106,kA:78};
+/* paletes gravadas antes desta versão tinham a folga entre ripas em vez do comprimento da travessa */
+function migrarP(p){
+  const q={...(p||{})};
+  if(q.tC==null&&q.folga!=null){
+    const n=Math.max(2,Math.round(q.n!=null?q.n:DEFAULTS.n)), Lr=q.Lr!=null?q.Lr:DEFAULTS.Lr;
+    q.tC=n*Lr+(n-1)*q.folga;
+  }
+  delete q.folga;
+  return q;
+}
 const FICHA_DEFAULTS = {
   f_ref:"", f_rev:"1", f_data:"", f_desig:"", f_desc:"",
   f_mat:"Pinho bravo (Pinus pinaster)", f_dens:"450", f_peso:"",
@@ -305,7 +314,7 @@ let F = {...FICHA_DEFAULTS};
 /* unidade: os valores internos estão sempre em mm; só a apresentação muda */
 const UNITS={mm:{f:1,dec:1},cm:{f:10,dec:2},m:{f:1000,dec:3}};
 let U="mm", unitChosen=false;
-try{ const s=JSON.parse(localStorage.getItem("palete-v3")||"null"); if(s){ Object.assign(P,s.P||{}); Object.assign(F,s.F||{}); if(UNITS[s.U]){U=s.U; unitChosen=true;} } }catch(e){}
+try{ const s=JSON.parse(localStorage.getItem("palete-v3")||"null"); if(s){ Object.assign(P,migrarP(s.P)); Object.assign(F,s.F||{}); if(UNITS[s.U]){U=s.U; unitChosen=true;} } }catch(e){}
 function save(){ try{ localStorage.setItem("palete-v3",JSON.stringify(unitChosen?{P,F,U}:{P,F})); }catch(e){} }
 const fmt = v => Number.isInteger(+v) ? String(+v) : (+v).toFixed(1).replace(".",",");
 const fmtU = v => { const x=(+v)/UNITS[U].f; return String(+x.toFixed(UNITS[U].dec)).replace(".",","); };
@@ -369,11 +378,12 @@ function addBox(type,layer,sx,sy,sz,x,y,z,dims){
 
 function geom(){
   const n=Math.max(2,Math.round(P.n));
-  const W=n*P.Lr+(n-1)*P.folga;
+  const W=P.tC;
+  const folga=(W-n*P.Lr)/(n-1);
   SC=Math.max(P.C,W)/1200;
   const L=P.C;
   const H=P.E+P.kA+P.tE+P.E;
-  return {n,W,L,H};
+  return {n,W,L,H,folga};
 }
 
 let SC=1, lastFit=0;
@@ -413,15 +423,17 @@ function build(){
   // Travessas (3)
   colXc.forEach(xc=>addBox("str",2,tL,tE,W,xc-tL/2,E+kA,0,[W,tL,tE]));
   // Ripas do topo (n)
-  for(let i=0;i<n;i++) addBox("top",3,L,E,Lr,0,E+kA+tE,i*(Lr+P.folga),[L,Lr,E]);
+  for(let i=0;i<n;i++) addBox("top",3,L,E,Lr,0,E+kA+tE,i*(Lr+Math.max(0,G.folga)),[L,Lr,E]);
 
   if(U==="mm"&&(L<300||W<300)) warn.push(`Atenção: estás a usar milímetros e esta palete tem só ${fmt(L)} × ${fmt(W)} mm. Se escreveste em centímetros, muda a unidade para cm no topo do painel.`);
-  if(P.folga<0) warn.push("A folga entre ripas não pode ser negativa.");
+  if(G.folga<0) warn.push(`Com ${n} ripas de ${withU(Lr)}, a travessa tem de ter pelo menos ${withU(n*Lr)} de comprimento.`);
   if(L<3*Math.max(kC,tL)) warn.push("As ripas são curtas demais para 3 colunas de tacos com esta medida.");
-  if(W<3*Math.max(Lr,kL)) warn.push("A palete é estreita demais para 3 filas de tacos. Aumenta o nº de ripas do topo ou a folga.");
+  if(W<3*Math.max(Lr,kL)) warn.push("A palete é estreita demais para 3 filas de tacos. Aumenta o comprimento da travessa.");
   $("warn").hidden=!warn.length; $("warn").textContent=warn.join(" ");
 
-  $("tC").value = fmtU(W);
+  $("folgaNote").textContent = G.folga>=0
+    ? `O comprimento da travessa é a largura da palete. As ripas do topo ficam distribuídas por igual, com ${withU(G.folga)} de folga entre elas.`
+    : "O comprimento da travessa é a largura da palete. As ripas do topo ficam distribuídas por igual.";
   addTags(); addDims(); fillTable(); applyExplode(); refreshFichaPlaceholders();
   fitCamera();
   save();
@@ -898,7 +910,7 @@ function toInputs(){
 }
 fields.forEach(f=>$(f).addEventListener("input",()=>{
   const v=parseFloat(String($(f).value).replace(",",".")); if(!(v>=0)) return;
-  if(f!=="folga"&&!(v>0)) return;
+  if(!(v>0)) return;
   P[f]=f==="n"?Math.round(v):v*UNITS[U].f; build();
 }));
 function setUnit(u){
@@ -931,7 +943,8 @@ try{ const l=JSON.parse(localStorage.getItem(LIB_KEY)||"[]"); if(Array.isArray(l
 function saveLib(){ try{ localStorage.setItem(LIB_KEY,JSON.stringify(LIB)); return true; }catch(e){ return false; } }
 function libStatus(t,bad){ const st=$("savedStatus"); st.className="status"+(bad?" bad":" ok"); st.textContent=t; }
 function dimsOf(e){
-  const n=Math.max(2,Math.round(e.P.n)), W=n*e.P.Lr+(n-1)*e.P.folga, H=e.P.E+e.P.kA+e.P.tE+e.P.E;
+  const pp={...DEFAULTS,...migrarP(e.P)};
+  const W=pp.tC, H=pp.E+pp.kA+pp.tE+pp.E;
   const u=UNITS[e.U]?e.U:"mm", f=UNITS[u].f, dec=UNITS[u].dec, q=v=>String(+(v/f).toFixed(dec)).replace(".",",");
   return `${q(e.P.C)} × ${q(W)} × ${q(H)} ${u}`;
 }
@@ -956,7 +969,7 @@ function renderLib(){
 }
 function loadEntry(i){
   const e=LIB[i]; if(!e) return;
-  Object.assign(P,DEFAULTS,e.P||{});
+  Object.assign(P,DEFAULTS,migrarP(e.P));
   F={...FICHA_DEFAULTS,...(e.F||{})};
   curName=e.nome; $("saveName").value=e.nome;
   if(UNITS[e.U]) setUnit(e.U); else { toInputs(); build(); }

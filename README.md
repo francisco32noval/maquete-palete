@@ -13,8 +13,8 @@ Funciona no navegador (Chrome, Edge ou Firefox) e não precisa de instalação n
 3. Na primeira vez, escolhe a unidade em que vais escrever as medidas: **mm**, **cm** ou **m**. Podes mudá-la depois no topo do painel. As medidas já escritas são convertidas e a ficha técnica sai na mesma unidade.
 4. Preenche as medidas:
    - **Ripas**: comprimento, largura e espessura. As ripas do topo e da base são iguais. A base leva sempre 3 ripas.
-   - **Nº de ripas no topo** e **folga entre ripas**: definem a largura da palete e o comprimento das travessas.
-   - **Travessas (3)**: largura e espessura. O comprimento é calculado sozinho.
+   - **Nº de ripas no topo**: ficam distribuídas por igual ao longo das travessas. A folga entre ripas é calculada sozinha.
+   - **Travessas (3)**: comprimento, largura e espessura. O comprimento da travessa é a largura da palete.
    - **Tacos (9 iguais)**: comprimento, largura e altura.
 5. Na secção **Ficha técnica**, carrega em **Editar**. Na janela que abre, escreve a designação e a descrição e revê os restantes campos.
 6. Em **Empresa no topo da ficha**, escolhe a empresa que aparece no topo de cada página (AcustiKideia ou Habitualescolha) ou **Sem empresa**. A escolha fica gravada com a palete.
