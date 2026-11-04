@@ -197,6 +197,13 @@ main.clean .info,main.clean .hint{display:none}
     <section class="sec" aria-labelledby="fichaH">
       <div class="sec-head"><h2 id="fichaH">Ficha técnica</h2><button class="ghost" id="fichaEdit" type="button">Editar</button></div>
       <p class="note" id="fichaResumo" style="margin:0 0 10px"></p>
+      <div class="field" style="margin-bottom:10px"><label for="f_rod">Rodapé da ficha</label>
+        <select id="f_rod">
+          <option value="acustikideia">AcustiKideia, Lda.</option>
+          <option value="habitualescolha">Habitualescolha – Unipessoal, Lda.</option>
+          <option value="nenhum">Sem rodapé</option>
+        </select>
+      </div>
       <button class="btn" id="pdfBtn" type="button">Descarregar ficha técnica (PDF)</button>
       <p class="status" id="pdfStatus" role="status"></p>
     </section>
@@ -263,7 +270,25 @@ const FICHA_DEFAULTS = {
   f_trat:"Tratamento térmico (HT) em conformidade com a norma NIMF-15 (ISPM-15), com marcação a fogo IPPC/FAO.",
   f_hum:"≤ 40 %",
   f_arm:"Armazenar em local coberto, seco e ventilado, ao abrigo da chuva e da exposição solar direta. Empilhada sobre estrado/barrotes, afastada do solo e com espaçadores que permitam a circulação de ar.",
-  f_orig:"Portugal"
+  f_orig:"Portugal",
+  f_rod:"acustikideia"
+};
+/* rodapés disponíveis para a ficha técnica (uma linha em negrito + linhas de contactos) */
+const RODAPES = {
+  acustikideia:{
+    nome:"AcustiKideia, Lda. — Indústria de Madeiras, Paletes e Folheado",
+    linhas:[
+      "R. da Restauração, n.º 358 · 4820-806 Travassós – Fafe · NIF 513 243 739",
+      "Tel. 253 035 587 · Tlm. 932 491 108 · acustikideia@gmail.com · josedomendes@hotmail.com"
+    ]
+  },
+  habitualescolha:{
+    nome:"Habitualescolha – Unipessoal, Lda.",
+    linhas:[
+      "Rua da Restauração, n.º 358 · 4820-806 Travassós – Fafe · NIF 515 188 441"
+    ]
+  },
+  nenhum:null
 };
 const TYPES = {
   top:{name:"Ripa do topo", color:0xd8b27a},
@@ -806,8 +831,16 @@ function makePdf(){
 
   // rodapé e numeração em todas as páginas
   const pages=doc.getNumberOfPages();
+  const rod=RODAPES.hasOwnProperty(F.f_rod)?RODAPES[F.f_rod]:RODAPES[FICHA_DEFAULTS.f_rod];
   for(let p=1;p<=pages;p++){
     doc.setPage(p);
+    if(rod){
+      doc.setDrawColor(...LINE); doc.setLineWidth(.2); doc.line(X0,279.5,X1,279.5);
+      let fy=283.4;
+      font("bold",8.5,NAVY); doc.text(rod.nome,(X0+X1)/2,fy,{align:"center"});
+      font("normal",7.5,MUTED);
+      rod.linhas.forEach(l=>{ fy+=LH(7.5)+0.4; doc.text(l,(X0+X1)/2,fy,{align:"center"}); });
+    }
     if(p===1){ font("normal",9,INK); doc.text(`Pág. 1 de ${pages}`,pgCell.x,pgCell.y,{align:"center"}); }
     else {
       doc.setFillColor(...NAVY); doc.rect(X0,12,CW,5.6,"F");

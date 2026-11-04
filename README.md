@@ -17,7 +17,8 @@ Funciona no navegador (Chrome, Edge ou Firefox) e não precisa de instalação n
    - **Travessas (3)**: largura e espessura. O comprimento é calculado sozinho.
    - **Tacos (9 iguais)**: comprimento, largura e altura.
 5. Na secção **Ficha técnica**, carrega em **Editar**. Na janela que abre, escreve a designação e a descrição e revê os restantes campos.
-6. Carrega em **Descarregar ficha técnica (PDF)**. O ficheiro vai para a pasta de transferências.
+6. Em **Rodapé da ficha**, escolhe a empresa que aparece no fundo de cada página (AcustiKideia ou Habitualescolha) ou **Sem rodapé**. A escolha fica gravada com a palete.
+7. Carrega em **Descarregar ficha técnica (PDF)**. O ficheiro vai para a pasta de transferências.
 
 As medidas e os campos da ficha ficam guardados no navegador desse PC. Na próxima vez que abrires o programa, voltam a aparecer.
 
